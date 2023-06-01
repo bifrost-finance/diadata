@@ -8,6 +8,15 @@ async function main() {
     provider: wsProvider
   }));
 
+  const currency_metadatas_native = await api.query.assetRegistry.currencyMetadatas.entries();
+  const currency_metadatas = currency_metadatas_native.
+    map((item) => {
+      let out = { currency_id: '', decimals: '' };
+      out.currency_id = JSON.stringify(item[0].toHuman()[0]);
+      out.decimals = item[1].toJSON().decimals;
+      return out
+    }
+    )
   const pair_statuses_native = await api.query.zenlinkProtocol.pairStatuses.entries();
   const pair_statuses = pair_statuses_native.
     map((item) => {
@@ -62,7 +71,7 @@ async function main() {
         let from = getTokenByPair(from_native).token
         let to = getTokenByPair(to_native).token
         if (from == "vKSM" && to == "KSM" || from == "KSM" && to == "vKSM") {
-          let out = `${from}-${to} ${from} ${to} ${BigNumber(asset_balance[0]).dividedBy(1_000_000_000_000)} ${BigNumber(asset_balance.pop()).dividedBy(1_000_000_000_000)} ${header.number}-${phase.asApplyExtrinsic}`;
+          let out = `${from}-${to} ${from} ${to} ${BigNumber(asset_balance[0]).dividedBy(Math.pow(10, getDecimal(currency_metadatas, getCurrencyId(from))))} ${BigNumber(asset_balance.pop()).dividedBy(Math.pow(10, getDecimal(currency_metadatas, getCurrencyId(to))))} ${header.number}-${phase.asApplyExtrinsic}`;
           if (getPairAccount(from_native, to_native) != undefined) {
             out += ` ${getPairAccount(from_native, to_native)}`
           } else if (getPairAccount(to_native, from_native) != undefined) {
@@ -159,6 +168,26 @@ const getLocation = (token) => {
     }
   }).map((item) => {
     return item.location
+  }
+  )[0]
+}
+const getCurrencyId = (token) => {
+  return TokenToLocation.filter((item) => {
+    if (item.token == token) {
+      return true
+    }
+  }).map((item) => {
+    return item.currency_id
+  }
+  )[0]
+}
+const getDecimal = (currency_metadatas, currency_id) => {
+  return currency_metadatas.filter((item) => {
+    if (item.currency_id == currency_id) {
+      return true
+    }
+  }).map((item) => {
+    return item.decimals
   }
   )[0]
 }
